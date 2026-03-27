@@ -421,7 +421,8 @@ def compute_temporal_metrics(
         summary[f"{name}_mean"] = float(vals.mean())
         summary[f"{name}_std"] = float(vals.std())
         summary[f"{name}_max"] = float(vals.max())
-        summary[f"{name}_auc"] = float(np.trapezoid(vals) / max(n_frames - 1, 1))
+        auc = np.trapezoid(vals) if hasattr(np, "trapezoid") else np.trapz(vals)
+        summary[f"{name}_auc"] = float(auc / max(n_frames - 1, 1))
 
     # Divergence onset: first frame where 5-frame moving average of pixel_epe_mean
     # exceeds 2x the median of the first 5 frames
