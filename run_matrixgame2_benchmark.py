@@ -57,15 +57,37 @@ def _load_action_controls(action_file: Path, num_frames: int) -> dict[str, torch
     if isinstance(action_data, dict):
         keyboard = np.asarray(action_data["keyboard"][:num_frames], dtype=np.float32)
         mouse = np.asarray(action_data["mouse"][:num_frames], dtype=np.float32)
+        keyboard = _normalize_keyboard_actions(keyboard)
         return {
             "keyboard_cond": torch.from_numpy(keyboard).unsqueeze(0),
             "mouse_cond": torch.from_numpy(mouse).unsqueeze(0),
         }
 
     keyboard = np.asarray(action_data[:num_frames], dtype=np.float32)
+    keyboard = _normalize_keyboard_actions(keyboard)
     return {
         "keyboard_cond": torch.from_numpy(keyboard).unsqueeze(0),
     }
+
+
+def _normalize_keyboard_actions(keyboard: np.ndarray) -> np.ndarray:
+    """Match dataset keyboard actions to the model's expected action width.
+
+    MatrixGame 2.0 checkpoints commonly expect 4 movement channels
+    (forward/back/left/right). The `to_shao` actions use 6 channels, with the
+    first four matching movement keys and the trailing channels reserved for
+    extra controls this checkpoint does not consume.
+    """
+    if keyboard.ndim != 2:
+        raise ValueError(f"Expected keyboard actions with shape [T, K], got {keyboard.shape}")
+    if keyboard.shape[1] == 4:
+        return keyboard
+    if keyboard.shape[1] == 6:
+        return keyboard[:, :4]
+    raise ValueError(
+        "Unsupported keyboard action width "
+        f"{keyboard.shape[1]}; expected 4 or 6 channels"
+    )
 
 
 def _generate_with_fastvideo(args: argparse.Namespace, gen_video_path: Path) -> dict[str, Any]:
